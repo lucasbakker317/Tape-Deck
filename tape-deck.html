@@ -129,7 +129,7 @@
       <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5l5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
       <span class="big">Pick a video</span>
       <span>AVI · MOV · MKV · MP4 — anything</span>
-      <input type="file" id="file">
+      <input type="file" id="file" accept="video/*,.avi,.mov,.mkv,.mp4">
     </label>
 
     <div class="file" id="fileinfo" style="display:none">📼 <b id="fname"></b><span id="fsize"></span></div>
@@ -174,7 +174,7 @@
   </p>
 </div>
 
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
 <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 <script>
 const $ = s => document.querySelector(s);
@@ -199,6 +199,8 @@ const drop=$('#drop'), fileEl=$('#file'), go=$('#go'), meter=$('#meter'),
 function showErr(m){errEl.textContent='⚠ '+m; errEl.classList.add('show');}
 function log(m){logEl.classList.add('show'); logEl.textContent=(logEl.textContent+'\n'+m).split('\n').slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight;}
 function fmt(b){return b>1e6?(b/1e6).toFixed(1)+' MB':(b/1e3).toFixed(0)+' KB';}
+function timeout(p, ms, msg){return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error(msg)),ms))]);}
+async function moduleWorkerURL(url){const src=await(await fetch(url)).text(),base=url.replace(/[^/]+$/,'');return URL.createObjectURL(new Blob([src.replaceAll('from "./','from "'+base).replaceAll('import("./','import("'+base)],{type:'text/javascript'}));}
 
 // quality segmented control
 $('#qual').addEventListener('click',e=>{
@@ -244,11 +246,12 @@ async function loadEngine(){
     const p=Math.max(0,Math.min(100,Math.round(progress*100)));
     fill.style.width=p+'%'; pct.textContent=p+'%';
   });
-  const base='https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+  const base='https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
+  const classWorkerURL=await moduleWorkerURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js');
   const coreURL = await fetchWithProgress(`${base}/ffmpeg-core.js`,'text/javascript','engine core');
   const wasmURL = await fetchWithProgress(`${base}/ffmpeg-core.wasm`,'application/wasm','engine wasm');
   phase.textContent='starting engine'; fill.style.width='0%'; pct.textContent='0%';
-  await ffmpeg.load({ coreURL, wasmURL });
+  await timeout(ffmpeg.load({ classWorkerURL, coreURL, wasmURL }), 45000, 'engine startup timed out — try Safari/Chrome over HTTPS or a smaller file');
   loaded=true;
 }
 
