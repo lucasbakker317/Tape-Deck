@@ -218,8 +218,25 @@ fileEl.addEventListener('change',e=>{ if(e.target.files[0]) setFile(e.target.fil
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hot');}));
 drop.addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
 
+async function fetchWithProgress(url, mime, label){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('download failed ('+res.status+') '+url);
+  const total = +(res.headers.get('Content-Length')||0);
+  const reader = res.body.getReader();
+  let got=0; const chunks=[];
+  for(;;){
+    const {done, value} = await reader.read();
+    if(done) break;
+    chunks.push(value); got += value.length;
+    const mb=(got/1e6).toFixed(1);
+    phase.textContent = label+' '+mb+(total?(' / '+(total/1e6).toFixed(0)):'')+' MB';
+    if(total){ const p=Math.round(got/total*100); fill.style.width=p+'%'; pct.textContent=p+'%'; }
+  }
+  return URL.createObjectURL(new Blob(chunks,{type:mime}));
+}
+
 async function loadEngine(){
-  phase.textContent='downloading engine'; meter.classList.add('show');
+  meter.classList.add('show'); phase.textContent='downloading engine';
   ensureLib();
   ffmpeg = new FFmpegClass();
   ffmpeg.on('log', ({message}) => log(message));
@@ -228,10 +245,10 @@ async function loadEngine(){
     fill.style.width=p+'%'; pct.textContent=p+'%';
   });
   const base='https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-  await ffmpeg.load({
-    coreURL: await ffUtil.toBlobURL(`${base}/ffmpeg-core.js`,'text/javascript'),
-    wasmURL: await ffUtil.toBlobURL(`${base}/ffmpeg-core.wasm`,'application/wasm'),
-  });
+  const coreURL = await fetchWithProgress(`${base}/ffmpeg-core.js`,'text/javascript','engine core');
+  const wasmURL = await fetchWithProgress(`${base}/ffmpeg-core.wasm`,'application/wasm','engine wasm');
+  phase.textContent='starting engine'; fill.style.width='0%'; pct.textContent='0%';
+  await ffmpeg.load({ coreURL, wasmURL });
   loaded=true;
 }
 
