@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="AVI→MP4">
-<title>AVI → MP4 · local converter</title>
+<title>AVI → MP4 · local batch converter</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap');
 
@@ -60,87 +60,99 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:8px;text-align:center;cursor:pointer;
     border:1.5px dashed var(--line);border-radius:12px;
-    padding:34px 16px;color:var(--dim);transition:.18s;
+    padding:30px 16px;color:var(--dim);transition:.18s;
   }
   label.drop:hover,label.drop.hot{border-color:var(--amber);color:var(--ink);background:rgba(255,174,59,.04)}
   label.drop .big{font-family:'Space Mono';font-size:15px;color:var(--ink)}
-  label.drop svg{width:34px;height:34px;stroke:var(--amber);fill:none;stroke-width:1.4}
+  label.drop svg{width:32px;height:32px;stroke:var(--amber);fill:none;stroke-width:1.4}
   input[type=file]{display:none}
 
-  .file{display:flex;align-items:center;gap:10px;font-size:12.5px;margin-top:14px;color:var(--dim);word-break:break-all}
-  .file b{color:var(--ink);font-weight:500}
+  .list{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+  .item{
+    display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;
+    background:#0f1115;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    position:relative;overflow:hidden;
+  }
+  .item .ibar{position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--amber);transition:width .2s}
+  .item.done .ibar{width:100%!important;background:var(--green)}
+  .item.error{border-color:rgba(255,93,84,.5)}
+  .item .ico{font-size:15px;opacity:.85}
+  .item .meta{min-width:0}
+  .item .meta b{display:block;font-weight:500;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .meta small{font-size:10.5px;color:var(--dim)}
+  .item.error .meta small{color:var(--red)}
+  .item .row-act{display:flex;gap:6px;align-items:center}
+  .item .row-act button{
+    border:1px solid var(--line);background:transparent;color:var(--ink);
+    font-family:'DM Mono';font-size:11px;padding:6px 9px;border-radius:7px;cursor:pointer;
+  }
+  .item .row-act button.s{background:var(--green);color:#06190f;border-color:var(--green);font-weight:600}
+  .item .x{border:0;background:transparent;color:var(--dim);font-size:16px;cursor:pointer;padding:0 2px;line-height:1}
 
+  .barwrap{margin-top:16px;display:none}
+  .barwrap.show{display:block}
+  .bar{height:9px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0f1115}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--amber),#ffd089);transition:width .25s}
+  .stat{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:7px}
+
+  .controls{display:flex;gap:10px;margin-top:18px}
   button.go{
-    width:100%;margin-top:20px;padding:15px;border:0;border-radius:11px;cursor:pointer;
+    flex:1;padding:15px;border:0;border-radius:11px;cursor:pointer;
     background:var(--amber);color:#1a1206;font-family:'Space Mono';font-weight:700;font-size:15px;letter-spacing:.3px;
     transition:.15s;
   }
   button.go:disabled{background:#2a2d34;color:#565b64;cursor:not-allowed}
   button.go:not(:disabled):active{transform:translateY(1px)}
-
-  .meter{margin-top:18px;display:none}
-  .meter.show{display:block}
-  .bar{height:10px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0f1115}
-  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--amber),#ffd089);transition:width .25s}
-  .stat{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:7px}
+  button.saveall{
+    flex:1;padding:15px;border:1px solid var(--green);border-radius:11px;cursor:pointer;display:none;
+    background:var(--green);color:#06190f;font-family:'Space Mono';font-weight:700;font-size:15px;
+  }
+  button.saveall.show{display:block}
 
   pre.log{
     margin-top:14px;background:#08090b;border:1px solid var(--line);border-radius:9px;
-    padding:11px;font-size:10.5px;line-height:1.5;color:#6f7680;height:96px;overflow:auto;white-space:pre-wrap;display:none;
+    padding:11px;font-size:10.5px;line-height:1.5;color:#6f7680;height:88px;overflow:auto;white-space:pre-wrap;display:none;
   }
   pre.log.show{display:block}
-
-  .result{display:none;margin-top:18px;text-align:center}
-  .result.show{display:block}
-  .result video{width:100%;border-radius:10px;border:1px solid var(--line);background:#000;margin-bottom:14px}
-  .actions{display:flex;gap:10px}
-  .actions a,.actions button{flex:1;text-decoration:none;text-align:center;padding:13px;border-radius:10px;font-family:'Space Mono';font-weight:700;font-size:13px;cursor:pointer;border:1px solid var(--line)}
-  .actions .share{background:var(--green);color:#06190f;border-color:var(--green)}
-  .actions .dl{background:transparent;color:var(--ink)}
+  .err{color:var(--red);font-size:12px;margin-top:12px;display:none}
+  .err.show{display:block}
 
   .note{color:var(--dim);font-size:11px;line-height:1.6;margin-top:22px;text-align:center}
   .note code{color:var(--amber)}
-  .err{color:var(--red);font-size:12px;margin-top:12px;display:none}
-  .err.show{display:block}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>AVI → MP4<span class="dot">●</span></h1>
-    <div class="sub">on-device<br>fast conversion</div>
+    <div class="sub">on-device<br>batch convert</div>
   </header>
 
   <div class="panel">
     <label class="drop" id="drop">
       <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5l5 5"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
-      <span class="big">Choose an AVI file</span>
-      <span>.AVI only — convert to MP4</span>
-      <input type="file" id="file" accept="video/x-msvideo,.avi">
+      <span class="big">Choose AVI files</span>
+      <span>pick several at once — they'll queue up</span>
+      <input type="file" id="file" accept="video/x-msvideo,.avi" multiple>
     </label>
 
-    <div class="file" id="fileinfo" style="display:none">📼 <b id="fname"></b><span id="fsize"></span></div>
+    <div class="list" id="list"></div>
 
-    <button class="go" id="go" disabled>LOAD ENGINE & CONVERT</button>
+    <div class="controls">
+      <button class="go" id="go" disabled>CONVERT ALL</button>
+      <button class="saveall" id="saveall">SAVE ALL</button>
+    </div>
 
-    <div class="meter" id="meter">
+    <div class="barwrap" id="barwrap">
       <div class="bar"><i id="fill"></i></div>
       <div class="stat"><span id="phase">idle</span><span id="pct">0%</span></div>
     </div>
     <pre class="log" id="log"></pre>
     <div class="err" id="err"></div>
-
-    <div class="result" id="result">
-      <video id="preview" controls playsinline></video>
-      <div class="actions">
-        <button class="share" id="share">Save / Share</button>
-        <a class="dl" id="dl" download="converted.mp4">Download</a>
-      </div>
-    </div>
   </div>
 
   <p class="note">
-    Everything runs in your browser — the video never leaves your phone.<br>
+    Everything runs in your browser — nothing leaves your phone.<br>
     First run downloads the FFmpeg engine (~32 MB), then it's cached.<br>
     Tip: open in Safari → Share → <code>Add to Home Screen</code> for an app icon.
   </p>
@@ -151,6 +163,7 @@
 <script>
 const $ = s => document.querySelector(s);
 
+/* ---------- engine: kept exactly as the working build ---------- */
 let FFmpegClass = null, ffUtil = null;
 function ensureLib(){
   if(!window.FFmpegWASM || !window.FFmpegWASM.FFmpeg || !window.FFmpegUtil){
@@ -159,39 +172,16 @@ function ensureLib(){
   FFmpegClass = window.FFmpegWASM.FFmpeg;
   ffUtil = window.FFmpegUtil;
 }
+function timeout(p, ms, msg){return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error(msg)),ms))]);}
+async function moduleWorkerURL(url){const src=await(await fetch(url)).text(),base=url.replace(/[^/]+$/,'');return URL.createObjectURL(new Blob([src.replaceAll('from "./','from "'+base).replaceAll('import("./','import("'+base)],{type:'text/javascript'}));}
 
-let ffmpeg = null, loaded = false, file = null, outURL = null, outBlob = null;
-
-const drop=$('#drop'), fileEl=$('#file'), go=$('#go'), meter=$('#meter'),
-      fill=$('#fill'), pct=$('#pct'), phase=$('#phase'), logEl=$('#log'),
-      errEl=$('#err'), result=$('#result'), preview=$('#preview'),
-      dl=$('#dl'), shareBtn=$('#share');
+let ffmpeg = null, loaded = false;
+const fill=$('#fill'), pctEl=$('#pct'), phase=$('#phase'), barwrap=$('#barwrap'),
+      logEl=$('#log'), errEl=$('#err');
 
 function showErr(m){errEl.textContent='⚠ '+m; errEl.classList.add('show');}
 function log(m){logEl.classList.add('show'); logEl.textContent=(logEl.textContent+'\n'+m).split('\n').slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight;}
 function fmt(b){return b>1e6?(b/1e6).toFixed(1)+' MB':(b/1e3).toFixed(0)+' KB';}
-function timeout(p, ms, msg){return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error(msg)),ms))]);}
-async function moduleWorkerURL(url){const src=await(await fetch(url)).text(),base=url.replace(/[^/]+$/,'');return URL.createObjectURL(new Blob([src.replaceAll('from "./','from "'+base).replaceAll('import("./','import("'+base)],{type:'text/javascript'}));}
-
-// file selection
-function setFile(f){
-  if(!f.name.toLowerCase().endsWith('.avi')){
-    showErr('Only .avi files are accepted.');
-    return;
-  }
-  file=f; $('#fileinfo').style.display='flex';
-  $('#fname').textContent=f.name; $('#fsize').textContent=' · '+fmt(f.size);
-  go.disabled=false; result.classList.remove('show'); errEl.classList.remove('show');
-}
-fileEl.addEventListener('change',e=>{ if(e.target.files[0]) setFile(e.target.files[0]); });
-['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hot');}));
-['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hot');}));
-drop.addEventListener('drop',e=>{ 
-  e.preventDefault();
-  const f=e.dataTransfer.files[0];
-  if(f && f.name.toLowerCase().endsWith('.avi')) setFile(f);
-  else showErr('Please drop a .avi file');
-});
 
 async function fetchWithProgress(url, mime, label){
   const res = await fetch(url);
@@ -205,76 +195,166 @@ async function fetchWithProgress(url, mime, label){
     chunks.push(value); got += value.length;
     const mb=(got/1e6).toFixed(1);
     phase.textContent = label+' '+mb+(total?(' / '+(total/1e6).toFixed(0)):'')+' MB';
-    if(total){ const p=Math.round(got/total*100); fill.style.width=p+'%'; pct.textContent=p+'%'; }
+    if(total){ const p=Math.round(got/total*100); fill.style.width=p+'%'; pctEl.textContent=p+'%'; }
   }
   return URL.createObjectURL(new Blob(chunks,{type:mime}));
 }
 
 async function loadEngine(){
-  meter.classList.add('show'); phase.textContent='downloading engine';
+  barwrap.classList.add('show'); phase.textContent='downloading engine';
   ensureLib();
   ffmpeg = new FFmpegClass();
   ffmpeg.on('log', ({message}) => log(message));
-  ffmpeg.on('progress', ({progress}) => {
-    const p=Math.max(0,Math.min(100,Math.round(progress*100)));
-    fill.style.width=p+'%'; pct.textContent=p+'%';
-  });
+  ffmpeg.on('progress', ({progress}) => routeProgress(progress));
   const base='https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
   const classWorkerURL=await moduleWorkerURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js');
   const coreURL = await fetchWithProgress(`${base}/ffmpeg-core.js`,'text/javascript','engine core');
   const wasmURL = await fetchWithProgress(`${base}/ffmpeg-core.wasm`,'application/wasm','engine wasm');
-  phase.textContent='starting engine'; fill.style.width='0%'; pct.textContent='0%';
+  phase.textContent='starting engine'; fill.style.width='0%'; pctEl.textContent='0%';
   await timeout(ffmpeg.load({ classWorkerURL, coreURL, wasmURL }), 45000, 'engine startup timed out — try Safari/Chrome over HTTPS');
   loaded=true;
 }
 
+/* ---------- batch queue ---------- */
+let queue = [];          // {id, file, status, blob, url, el, barEl, statEl, actEl}
+let activeItem = null;
+let running = false;
+let idSeq = 0;
+
+const listEl=$('#list'), go=$('#go'), saveAllBtn=$('#saveall'), fileEl=$('#file'), drop=$('#drop');
+
+function routeProgress(p){
+  const frac=Math.max(0,Math.min(1,p));
+  if(activeItem){
+    activeItem.barEl.style.width=(frac*100).toFixed(0)+'%';
+    activeItem.statEl.textContent='converting · '+(frac*100).toFixed(0)+'%';
+  }
+  const done=queue.filter(q=>q.status==='done').length;
+  const overall=queue.length? (done+frac)/queue.length : 0;
+  fill.style.width=(overall*100).toFixed(0)+'%'; pctEl.textContent=Math.round(overall*100)+'%';
+}
+
+function addRow(item){
+  const el=document.createElement('div');
+  el.className='item';
+  el.innerHTML='<span class="ico">📼</span>'+
+    '<div class="meta"><b></b><small></small></div>'+
+    '<div class="row-act"></div>'+
+    '<i class="ibar"></i>';
+  el.querySelector('b').textContent=item.file.name;
+  const stat=el.querySelector('small'); stat.textContent='queued · '+fmt(item.file.size);
+  item.el=el; item.statEl=stat; item.barEl=el.querySelector('.ibar'); item.actEl=el.querySelector('.row-act');
+  const x=document.createElement('button'); x.className='x'; x.textContent='✕'; x.title='remove';
+  x.onclick=()=>removeItem(item.id);
+  item.actEl.appendChild(x);
+  listEl.appendChild(el);
+}
+
+function removeItem(id){
+  if(running) return;
+  const i=queue.findIndex(q=>q.id===id);
+  if(i<0) return;
+  if(queue[i].url) URL.revokeObjectURL(queue[i].url);
+  queue[i].el.remove(); queue.splice(i,1);
+  refreshControls();
+}
+
+function addFiles(files){
+  let skipped=0;
+  for(const f of files){
+    if(!f.name.toLowerCase().endsWith('.avi')){ skipped++; continue; }
+    if(queue.some(q=>q.file.name===f.name && q.file.size===f.size)) continue;
+    const item={id:++idSeq, file:f, status:'queued', blob:null, url:null};
+    queue.push(item); addRow(item);
+  }
+  errEl.classList.remove('show');
+  if(skipped) showErr(skipped+' non-AVI file'+(skipped>1?'s':'')+' skipped.');
+  refreshControls();
+}
+
+function refreshControls(){
+  const pending=queue.some(q=>q.status==='queued'||q.status==='error');
+  go.disabled = running || !pending;
+  const anyDone=queue.some(q=>q.status==='done');
+  saveAllBtn.classList.toggle('show', anyDone && !running);
+}
+
+function markDone(item){
+  item.el.classList.add('done');
+  item.statEl.textContent='done · '+fmt(item.blob.size);
+  item.actEl.innerHTML='';
+  const stem=item.file.name.replace(/\.avi$/i,'')+'.mp4';
+  const save=document.createElement('button'); save.className='s'; save.textContent='Save';
+  save.onclick=()=>shareFiles([item]);
+  const dl=document.createElement('button'); dl.textContent='⤓';
+  dl.onclick=()=>{ const a=document.createElement('a'); a.href=item.url; a.download=stem; a.click(); };
+  item.actEl.append(save, dl);
+}
+
+function markError(item, msg){
+  item.el.classList.add('error');
+  item.statEl.textContent='failed · '+msg;
+}
+
+async function convertItem(item){
+  activeItem=item;
+  item.statEl.textContent='converting · 0%'; item.barEl.style.width='0%';
+  item.actEl.innerHTML='';
+  await ffmpeg.writeFile('input.avi', await ffUtil.fetchFile(item.file));
+  const args=['-i','input.avi','-c:v','libx264','-preset','veryfast','-crf','23',
+              '-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-movflags','+faststart','output.mp4'];
+  await ffmpeg.exec(args);
+  const data=await ffmpeg.readFile('output.mp4');
+  item.blob=new Blob([data.buffer],{type:'video/mp4'});
+  item.url=URL.createObjectURL(item.blob);
+  item.status='done';
+  try{ await ffmpeg.deleteFile('input.avi'); await ffmpeg.deleteFile('output.mp4'); }catch(_){}
+  markDone(item);
+}
+
 go.addEventListener('click', async ()=>{
-  if(!file) return;
-  go.disabled=true; errEl.classList.remove('show'); result.classList.remove('show');
-  fill.style.width='0%'; pct.textContent='0%'; meter.classList.add('show');
+  if(running) return;
+  running=true; errEl.classList.remove('show'); refreshControls();
+  go.textContent='WORKING…'; barwrap.classList.add('show');
   try{
-    if(!loaded){ go.textContent='WORKING…'; await loadEngine(); }
-    go.textContent='WORKING…';
-    phase.textContent='reading file';
-    // force .avi extension for writeFile
-    await ffmpeg.writeFile('input.avi', await ffUtil.fetchFile(file));
-
-    phase.textContent='transcoding';
-    // Fixed high-quality settings: H.264, AAC, fast start
-    const args = ['-i','input.avi', 
-                  '-c:v','libx264', '-preset','veryfast', '-crf','23', '-pix_fmt','yuv420p',
-                  '-c:a','aac', '-b:a','192k', '-movflags','+faststart', 'output.mp4'];
-    await ffmpeg.exec(args);
-
-    phase.textContent='packaging';
-    const data=await ffmpeg.readFile('output.mp4');
-    outBlob=new Blob([data.buffer],{type:'video/mp4'});
-    if(outURL) URL.revokeObjectURL(outURL);
-    outURL=URL.createObjectURL(outBlob);
-
-    const stem=file.name.replace(/\.avi$/i,'');
-    preview.src=outURL; dl.href=outURL; dl.download=stem+'.mp4';
-    result.classList.add('show');
-    phase.textContent='done · '+fmt(outBlob.size); fill.style.width='100%'; pct.textContent='100%';
+    if(!loaded){ await loadEngine(); }
+    const todo=queue.filter(q=>q.status==='queued'||q.status==='error');
+    let i=0;
+    for(const item of todo){
+      i++; item.status='converting';
+      phase.textContent='converting '+item.file.name+' ('+i+'/'+todo.length+')';
+      try{ await convertItem(item); }
+      catch(e){ item.status='error'; markError(item,(e&&e.message)||'error'); log('ERR '+item.file.name+': '+e); }
+    }
+    const ok=queue.filter(q=>q.status==='done').length;
+    phase.textContent='finished · '+ok+'/'+queue.length+' done';
+    fill.style.width='100%'; pctEl.textContent='100%';
   }catch(e){
-    showErr((e&&e.message)||'conversion failed — see log');
-    log('ERROR: '+e);
+    showErr((e&&e.message)||'batch failed — see log'); log('FATAL: '+e);
   }finally{
-    go.disabled=false; go.textContent='CONVERT ANOTHER';
+    activeItem=null; running=false; go.textContent='CONVERT ALL'; refreshControls();
   }
 });
 
-shareBtn.addEventListener('click', async ()=>{
-  if(!outBlob) return;
-  const stem=(file?file.name.replace(/\.avi$/i,''):'clip')+'.mp4';
-  const f=new File([outBlob],stem,{type:'video/mp4'});
-  if(navigator.canShare && navigator.canShare({files:[f]})){
-    try{ await navigator.share({files:[f], title:stem}); }
-    catch(e){ /* user cancelled */ }
+/* share: one or many files in a single iOS share sheet */
+async function shareFiles(items){
+  const files=items.filter(it=>it.blob).map(it=>new File([it.blob], it.file.name.replace(/\.avi$/i,'')+'.mp4', {type:'video/mp4'}));
+  if(!files.length) return;
+  if(navigator.canShare && navigator.canShare({files})){
+    try{ await navigator.share({files, title:files.length>1?'Converted clips':files[0].name}); }
+    catch(e){ /* cancelled */ }
   } else {
-    dl.click();
+    for(const it of items){ if(!it.url) continue; const a=document.createElement('a');
+      a.href=it.url; a.download=it.file.name.replace(/\.avi$/i,'')+'.mp4'; a.click(); await new Promise(r=>setTimeout(r,400)); }
   }
-});
+}
+saveAllBtn.addEventListener('click', ()=> shareFiles(queue.filter(q=>q.status==='done')));
+
+/* inputs */
+fileEl.addEventListener('change', e=>{ if(e.target.files.length) addFiles(e.target.files); fileEl.value=''; });
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hot');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hot');}));
+drop.addEventListener('drop', e=>{ e.preventDefault(); if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
 </script>
 </body>
 </html>
